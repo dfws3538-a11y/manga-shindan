@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="ベタ丸が12の質問からあなたの性格を推理し、ぴったりの漫画・小説・映画を紹介する診断サイト。">
+<title>マンガ性格診断</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: a comic "stage" — the ink spirit Betamaru on the left, its speech balloon on the right, answer panels below; halftone-dotted paper ground */
+:root {
+  --paper: #eef0f3;
+  --panel: #ffffff;
+  --ink: #15171c;
+  --ink-soft: #4a4f5c;
+  --tone: rgba(21, 23, 28, .09);
+  --accent: #2346d6;
+  --marker: #ffd43b;
+  --on-marker: #15171c;
+  --beta: #15171c;
+  --eye: #ffffff;
+  --t-est: #e5482f; --t-esf: #d98a12; --t-ent: #2346d6; --t-enf: #d6407d;
+  --t-ist: #3d7a8c; --t-isf: #2f9a6a; --t-int: #5b3fa8; --t-inf: #8a5a3c;
+  --f-display: "Dela Gothic One", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --f-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #16181d; --panel: #1f2229; --ink: #eceef2; --ink-soft: #a9afbd;
+    --tone: rgba(236, 238, 242, .07); --accent: #8ea2ff; --marker: #ffd43b; --on-marker: #15171c;
+    --beta: #0b0c0f; --eye: #ffffff;
+    --t-est: #ff7a62; --t-esf: #f2b14a; --t-ent: #8ea2ff; --t-enf: #ff7fb0;
+    --t-ist: #6cc3d8; --t-isf: #5fd09c; --t-int: #b29bff; --t-inf: #e0a27a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #16181d; --panel: #1f2229; --ink: #eceef2; --ink-soft: #a9afbd;
+  --tone: rgba(236, 238, 242, .07); --accent: #8ea2ff; --marker: #ffd43b; --on-marker: #15171c;
+  --beta: #0b0c0f; --eye: #ffffff;
+  --t-est: #ff7a62; --t-esf: #f2b14a; --t-ent: #8ea2ff; --t-enf: #ff7fb0;
+  --t-ist: #6cc3d8; --t-isf: #5fd09c; --t-int: #b29bff; --t-inf: #e0a27a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+[hidden] { display: none !important; }
+body {
+  background-color: var(--paper);
+  background-image: radial-gradient(var(--tone) 1.2px, transparent 1.4px);
+  background-size: 7px 7px;
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 16px;
+  line-height: 1.75;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 56px;
+}
+.page { max-width: 780px; margin: 0 auto; display: grid; gap: 20px; }
+
+.masthead { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.logo { font-family: var(--f-display); font-size: 1.15rem; letter-spacing: .04em; display: flex; align-items: center; gap: 10px; }
+.logo-mark { width: 30px; height: 30px; border: 3px solid var(--ink); background: var(--marker); display: grid; place-items: center; color: var(--on-marker); font-size: .9rem; transform: rotate(-6deg); }
+.masthead small { color: var(--ink-soft); font-size: .8rem; letter-spacing: .08em; }
+
+.panel {
+  background: var(--panel);
+  border: 3px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+  padding: clamp(20px, 4vw, 32px);
+  min-width: 0;
+}
+h1, h2, h3 { font-family: var(--f-display); font-weight: 400; text-wrap: balance; margin: 0; line-height: 1.3; }
+h2 { font-size: clamp(1.3rem, 4vw, 1.7rem); }
+p { margin: 0; }
+.stack { display: grid; gap: 16px; }
+.label { font-size: .78rem; letter-spacing: .14em; color: var(--ink-soft); font-weight: 700; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+.btn {
+  font: inherit; font-weight: 700; cursor: pointer;
+  border: 3px solid var(--ink); background: var(--marker); color: var(--on-marker);
+  padding: 12px 26px; box-shadow: 4px 4px 0 var(--ink);
+  transition: transform .08s, box-shadow .08s;
+}
+.btn:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--ink); }
+.btn:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+.btn.ghost { background: var(--panel); color: var(--ink); }
+.btn:focus-visible, .answer:focus-visible, .link-btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.link-btn { font: inherit; font-size: .9rem; background: none; border: 0; color: var(--ink-soft); cursor: pointer; padding: 4px 0; text-decoration: underline; text-underline-offset: 3px; }
+.link-btn:disabled { visibility: hidden; }
+
+/* ---- stage: Betamaru + balloon ---- */
+.stage { display: grid; grid-template-columns: minmax(110px, 190px) 1fr; gap: clamp(12px, 3vw, 28px); align-items: center; }
+@media (max-width: 520px) { .stage { grid-template-columns: 96px 1fr; } }
+.beta { width: 100%; height: auto; display: block; overflow: visible; }
+.beta .body { fill: var(--beta); stroke: var(--ink); stroke-width: 3; }
+.beta .white { fill: var(--eye); }
+.beta .pupil { fill: var(--beta); transition: transform .25s; }
+.beta .nib { fill: var(--marker); stroke: var(--ink); stroke-width: 3; stroke-linejoin: round; }
+.beta .mouth, .beta .lid { fill: none; stroke: var(--eye); stroke-width: 4; stroke-linecap: round; }
+.beta .cheek { fill: var(--t-enf); opacity: .8; }
+.beta .face-happy, .beta .face-wow { display: none; }
+.beta.is-happy .face-normal, .beta.is-wow .face-normal { display: none; }
+.beta.is-happy .face-happy { display: inline; }
+.beta.is-wow .face-wow { display: inline; }
+.beta.is-think .pupil { transform: translate(4px, -6px); }
+.beta.is-think .mouth-n { d: path("M86 128 q8 -2 16 0"); }
+.bob { animation: bob 2.6s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes bob { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
+.is-think .bob { animation: shake .5s ease-in-out infinite; }
+@keyframes shake { 0%, 100% { transform: rotate(-2deg) } 50% { transform: rotate(2deg) } }
+.sweat { fill: var(--accent); opacity: 0; }
+.is-think .sweat { opacity: .85; }
+
+.balloon {
+  position: relative; background: var(--panel); border: 3px solid var(--ink);
+  border-radius: 28px; padding: 20px clamp(18px, 4vw, 28px); min-width: 0;
+  box-shadow: 5px 5px 0 var(--ink);
+}
+.balloon::before {
+  content: ""; position: absolute; left: -17px; top: 42%; width: 22px; height: 22px;
+  background: var(--panel); border-left: 3px solid var(--ink); border-bottom: 3px solid var(--ink);
+  transform: rotate(45deg) skew(12deg, 12deg);
+}
+.speaker { font-size: .78rem; font-weight: 700; letter-spacing: .12em; color: var(--ink-soft); margin-bottom: 4px; }
+.say { font-weight: 700; font-size: clamp(1.05rem, 3.4vw, 1.3rem); line-height: 1.6; min-height: 3.2em; }
+.say.big { font-family: var(--f-display); font-weight: 400; }
+.caret { display: inline-block; width: .5em; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0 } }
+
+/* ---- quiz ---- */
+.qhead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.qno { font-family: var(--f-display); font-size: 1.05rem; }
+.qno em { font-style: normal; color: var(--ink-soft); font-size: .85rem; font-family: var(--f-body); margin-left: 6px; }
+.progress { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; }
+.progress i { height: 10px; border: 2px solid var(--ink); background: var(--panel); }
+.progress i.done { background: var(--ink); }
+.progress i.now { background: var(--marker); }
+
+.answers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media (max-width: 600px) { .answers { grid-template-columns: 1fr 1fr; } }
+.answer {
+  font: inherit; font-weight: 700; cursor: pointer; color: var(--ink);
+  border: 3px solid var(--ink); background: var(--panel); padding: 14px 10px;
+  box-shadow: 3px 3px 0 var(--ink); transition: transform .08s, box-shadow .08s, background .1s;
+  display: grid; gap: 2px; justify-items: center;
+}
+.answer small { font-weight: 500; font-size: .72rem; color: var(--ink-soft); }
+.answer:hover { background: var(--tone); }
+.answer:active, .answer.picked { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--ink); background: var(--marker); color: var(--on-marker); }
+.answer.picked small { color: var(--on-marker); }
+.answers.locked .answer { pointer-events: none; }
+
+/* ---- intro ---- */
+.shelf-strip { display: flex; gap: 6px; overflow: hidden; height: 120px; align-items: flex-end; }
+.mini-spine {
+  flex: 0 0 auto; width: 30px; border: 2px solid var(--ink); background: var(--c);
+  color: var(--panel); writing-mode: vertical-rl; font-size: .72rem; font-weight: 700;
+  padding: 8px 0; overflow: hidden; white-space: nowrap; letter-spacing: .04em;
+}
+.fine { font-size: .82rem; color: var(--ink-soft); }
+
+/* ---- result ---- */
+.type-card { border-top: 14px solid var(--c); }
+.kicker { font-size: .85rem; font-weight: 700; letter-spacing: .1em; color: var(--c); }
+.typename { font-size: clamp(2rem, 7.5vw, 3.2rem); }
+.catch { font-weight: 700; font-size: 1.05rem; }
+.lede { color: var(--ink-soft); max-width: 38em; }
+
+.deduce { display: grid; gap: 18px; }
+.clue { display: grid; gap: 6px; }
+.clue-q { font-size: .9rem; }
+.clue-q b { background: linear-gradient(transparent 58%, var(--marker) 58%); }
+.meter { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; font-size: .78rem; }
+.meter span:nth-child(3) { text-align: right; }
+.meter .meter-track { grid-column: 1 / -1; grid-row: 2; }
+.meter span.win { font-weight: 700; color: var(--ink); }
+.meter span { color: var(--ink-soft); }
+.meter-track { position: relative; height: 14px; border: 2px solid var(--ink); background: var(--panel); }
+.meter-track::after { content: ""; position: absolute; left: 50%; top: -5px; bottom: -5px; border-left: 2px dashed var(--ink-soft); }
+.meter-dot { position: absolute; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: var(--c); border: 2px solid var(--ink); transition: left .7s ease-out; }
+.clue-why { font-size: .88rem; color: var(--ink-soft); }
+
+.book { border: 3px solid var(--ink); background: var(--panel); display: grid; grid-template-columns: 56px 1fr; min-width: 0; }
+.book.hero-book { grid-template-columns: 76px 1fr; box-shadow: 6px 6px 0 var(--c); }
+.spine {
+  background: var(--c); border-right: 3px solid var(--ink); color: var(--panel);
+  writing-mode: vertical-rl; font-family: var(--f-display); font-size: .95rem;
+  display: flex; align-items: center; padding: 12px 0; letter-spacing: .08em;
+  overflow: hidden; white-space: nowrap;
+}
+.hero-book .spine { font-size: 1.2rem; }
+.book-body { padding: 16px 18px; display: grid; gap: 6px; min-width: 0; align-content: start; }
+.book-body h3 { font-size: 1.15rem; }
+.hero-book .book-body h3 { font-size: clamp(1.4rem, 5vw, 1.9rem); }
+.author { font-size: .82rem; color: var(--ink-soft); }
+.tag { justify-self: start; font-size: .72rem; font-weight: 700; border: 2px solid var(--ink); background: var(--marker); color: var(--on-marker); padding: 1px 8px; }
+.why { font-size: .93rem; }
+.book-body a { font-size: .8rem; color: var(--accent); font-weight: 700; text-underline-offset: 3px; justify-self: start; }
+.more { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+.copied { font-size: .85rem; color: var(--ink-soft); }
+
+.fade-in { animation: fade .28s ease-out; }
+@keyframes fade { from { opacity: .3; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .fade-in, .bob, .is-think .bob, .caret { animation: none; }
+  .btn, .answer, .meter-dot, .beta .pupil { transition: none; }
+}
+footer { text-align: center; font-size: .78rem; color: var(--ink-soft); }
+</style>
+
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <div class="logo"><span class="logo-mark">漫</span>マンガ性格診断</div>
+    <small>全12問・約2分</small>
+  </header>
+  <main id="app"></main>
+  <footer>受賞・ノミネート歴は「マンガ大賞」「このマンガがすごい!」（宝島社）「次にくるマンガ大賞」の発表に基づきます。</footer>
+</div>
+
+<script>
+// ---------- Betamaru (the ink spirit) ----------
+const BETA_SVG = `
+<svg class="beta" viewBox="0 0 190 200" role="img" aria-label="ベタ丸">
+  <g class="bob">
+    <path class="nib" d="M95 6 L112 40 L95 52 L78 40 Z"/>
+    <path d="M95 22 L95 40" stroke="var(--ink)" stroke-width="3"/>
+    <path class="body" d="M95 44 C60 70 22 100 22 138 C22 172 55 194 95 194 C135 194 168 172 168 138 C168 100 130 70 95 44 Z"/>
+    <path class="sweat" d="M150 92 q8 12 0 18 q-8 -6 0 -18 z"/>
+    <g class="face-normal">
+      <ellipse class="white" cx="72" cy="118" rx="15" ry="18"/>
+      <ellipse class="white" cx="118" cy="118" rx="15" ry="18"/>
+      <circle class="pupil" cx="74" cy="122" r="7"/>
+      <circle class="pupil" cx="116" cy="122" r="7"/>
+      <path class="mouth mouth-n" d="M84 148 q11 9 22 0"/>
+    </g>
+    <g class="face-happy">
+      <path class="lid" d="M60 120 q12 -14 24 0"/>
+      <path class="lid" d="M106 120 q12 -14 24 0"/>
+      <path class="mouth" d="M78 142 q17 20 34 0 z" fill="var(--eye)"/>
+    </g>
+    <g class="face-wow">
+      <circle class="white" cx="72" cy="116" r="19"/>
+      <circle class="white" cx="118" cy="116" r="19"/>
+      <circle class="pupil" cx="72" cy="116" r="5"/>
+      <circle class="pupil" cx="118" cy="116" r="5"/>
+      <ellipse class="mouth" cx="95" cy="154" rx="7" ry="9"/>
+    </g>
+    <circle class="cheek" cx="52" cy="146" r="7"/>
+    <circle class="cheek" cx="138" cy="146" r="7"/>
+  </g>
+</svg>`;
+
+// ---------- axes ----------
+// Each axis has two poles; a question's `yes` names the pole that "はい" pushes toward.
+const AXES = {
+  energy: { label: "元気の充電方法", poles: { E: "人と会って充電", I: "ひとりで充電" } },
+  sense:  { label: "情報の受け取り方", poles: { S: "目の前の事実", N: "頭の中のイメージ" } },
+  judge:  { label: "決めるときの軸", poles: { T: "筋道・理屈", F: "気持ち・関係" } }
+};
+
+const QUESTIONS = [
+  { q: "飲み会の帰り道、ひとりになった瞬間にほっとする。", axis: "energy", yes: "I",
+    why: "人といる時間に気力を「使う」人ほど、ひとりになった瞬間の解放感が大きくなる。",
+    whyNo: "人と過ごしたあとも元気が残っているのは、人との時間で充電できる人じゃ。" },
+  { q: "シャワーを浴びていると、関係ないアイデアが急に浮かんでくる。", axis: "sense", yes: "N",
+    why: "目や手がふさがっているときに頭が勝手に連想を始めるのは、イメージで考える人の特徴じゃ。",
+    whyNo: "頭が勝手に連想を始めない人は、目の前の現実にしっかり足をつけておる。" },
+  { q: "友達の愚痴を聞いていると、つい解決策を言いたくなる。", axis: "judge", yes: "T",
+    why: "まず「どうすれば直るか」に頭が向くのは、筋道で物事を片づけたい人の反射じゃな。",
+    whyNo: "まず気持ちを受け止めようとするのは、心を軸に判断する人の優しさじゃな。" },
+  { q: "旅行の写真を見返すと、景色より人が写っているものが多い。", axis: "energy", yes: "E",
+    why: "カメラを向ける先は、心が動く先。人を撮る人は、人から元気をもらっておる。",
+    whyNo: "景色を撮りたくなる人は、人の輪よりひとりで味わう時間に心が動いておる。" },
+  { q: "道を教えるときは「2つ目の信号を右、青い看板の店」のように具体的に伝える。", axis: "sense", yes: "S",
+    why: "目印や数で伝える人は、世界を「実際に見えるもの」で記憶しておるんじゃ。",
+    whyNo: "雰囲気や方角で伝える人は、見たものより頭の中の地図で考えておるんじゃ。" },
+  { q: "ペットボトルの最後のひと口を捨てるとき、少し申し訳ない気がする。", axis: "judge", yes: "F",
+    why: "物にすら気持ちを重ねてしまうのは、判断の軸に「心」がある証拠じゃよ。",
+    whyNo: "物は物と割り切れるのは、判断の軸に理屈を置いている証拠じゃよ。" },
+  { q: "レジで店員さんと、つい一言世間話をしてしまう。", axis: "energy", yes: "E",
+    why: "用事のない会話を自然に楽しめるのは、人とのやりとりが充電になっている人じゃ。",
+    whyNo: "用事のない会話をしないのは、人とのやりとりで気力を使う人の自然な選択じゃ。" },
+  { q: "天井のシミや雲が、顔や動物に見えてくることがよくある。", axis: "sense", yes: "N",
+    why: "ただの模様に意味を見つけてしまうのは、想像のスイッチが入りやすい頭の持ち主じゃ。",
+    whyNo: "模様は模様に見える人は、想像より目の前の事実を信じる頭の持ち主じゃ。" },
+  { q: "割り勘は、1円単位まできっちり分けたほうがすっきりする。", axis: "judge", yes: "T",
+    why: "気まずさより正確さを優先できるのは、ルールと理屈で決めたい人じゃな。",
+    whyNo: "多少ずれても場の空気を優先できるのは、気持ちで決める人じゃな。" },
+  { q: "休日、誰とも話さなかったけれど満足だった、という日がある。", axis: "energy", yes: "I",
+    why: "沈黙が「さみしい」ではなく「満たされる」なら、君の電池はひとりの時間で溜まる。",
+    whyNo: "誰とも話さない日が物足りないなら、君の電池は人との時間で溜まる。" },
+  { q: "レシピの「適量」「少々」と書かれていると、ちょっと困る。", axis: "sense", yes: "S",
+    why: "あいまいな言葉に落ち着かないのは、具体的な手がかりで世界をつかみたい人じゃ。",
+    whyNo: "「適量」で気にならないのは、感覚とイメージで補える人じゃ。" },
+  { q: "もう使わない物でも、思い出があるとなかなか捨てられない。", axis: "judge", yes: "F",
+    why: "役に立つかより「誰と、どんな時の物か」で決めるのは、気持ちを軸にする人じゃよ。",
+    whyNo: "思い出より今の役割で物を手放せるのは、筋道で決める人じゃよ。" }
+];
+
+const ANSWERS = [
+  { label: "はい", sub: "まさにそう", w: 2 },
+  { label: "たぶんそう", sub: "どちらかと言えば", w: 1 },
+  { label: "たぶん違う", sub: "どちらかと言えば", w: -1 },
+  { label: "いいえ", sub: "まったく違う", w: -2 }
+];
+
+// ---------- types & books ----------
+const TYPES = {
+  EST: { name: "盤面を読む勝負師", color: "--t-est",
+    catch: "人と競い合う、その瞬間に一番燃える。",
+    desc: "人の中でエネルギーが湧き、目の前の状況を正確に読んで素早く決めるタイプ。理屈の通った駆け引きと、勝負がつく瞬間の緊張感がある作品で一番楽しめます。",
+    books: [
+      { title: "ダイヤモンドの功罪", author: "平井大橋", tag: "このマンガがすごい! オトコ編1位",
+        why: "才能がありすぎる少年が野球を始めたことで、周りの子どもや大人が揺れていく。勝つことの意味を正面から問う、ひりつくスポーツ漫画です。" },
+      { title: "サンキューピッチ", author: "住吉九", tag: "次にくるマンガ大賞2025 Webマンガ部門1位",
+        why: "『ハイパーインフレーション』の作者が描く野球漫画。作戦と駆け引きでひっくり返していく面白さは、盤面を読むのが好きな君向き。" },
+      { title: "ジャンケットバンク", author: "田中一行",
+        why: "銀行の地下で行われる命がけのギャンブルを、新人行員が見届ける頭脳戦。ルールの穴を突く読み合いがクセになります。" }
+    ] },
+  ESF: { name: "人を照らす名脇役", color: "--t-esf",
+    catch: "誰かの「いい顔」を見られたら、それで満点。",
+    desc: "人と一緒にいると元気になり、相手の様子や空気の変化によく気づくタイプ。どこにでもいそうな人たちの会話やつながりが、じんわり効いてくる作品が合います。",
+    books: [
+      { title: "ひらやすみ", author: "真造圭伍",
+        why: "30歳フリーターのヒロトと、上京してきた従妹のなつみ。古い平屋での暮らしと人とのつながりが、読むほどに心をほぐしていきます。" },
+      { title: "スーパーの裏でヤニ吸うふたり", author: "地主", tag: "マンガ大賞2023 ノミネート",
+        why: "疲れた会社員とスーパーの店員が、店の裏でたばこを吸う時間だけ交わす会話。小さなやりとりの温度を味わうのが好きな君に。" },
+      { title: "波よ聞いてくれ", author: "沙村広明",
+        why: "失恋の愚痴をしゃべり倒したらラジオに流れ、パーソナリティになってしまう女性の物語。圧倒的な言葉のテンポと人間くささが魅力。" }
+    ] },
+  ENT: { name: "仕組みを企む発明家", color: "--t-ent",
+    catch: "「もしも」を考えはじめると止まらない。",
+    desc: "人と議論するほど頭が回り、目の前より「その先」を想像して筋道を組み立てるタイプ。大きな仮定から世界を作り込んだ作品や、ものづくりの熱がある作品にハマります。",
+    books: [
+      { title: "ダーウィン事変", author: "うめざわしゅん", tag: "マンガ大賞2022 大賞",
+        why: "ヒトとチンパンジーの間に生まれた少年チャーリーが、人間社会に問いを突きつける。正しさとは何かを考え続けたい君にぴったり。" },
+      { title: "日本三國", author: "松木いっか", tag: "マンガ大賞2023 ノミネート",
+        why: "文明が崩れ、三つの国に分かれた近未来の日本。弁舌と知略だけで国を動かそうとする青年の物語は、仕組みを考えるのが好きな人にこそ刺さります。" },
+      { title: "映像研には手を出すな!", author: "大童澄瞳",
+        why: "アニメを作りたい女子高生3人の「最強の世界」作り。設定を描き込む楽しさと、作品を形にする段取りの両方が描かれています。" }
+    ] },
+  ENF: { name: "物語に飛び込む開拓者", color: "--t-enf",
+    catch: "心が動いたら、もう走り出している。",
+    desc: "人との出会いから刺激を受け、想像力と気持ちの強さで新しい場所へ踏み出すタイプ。知らない世界に飛び込む主人公や、何かに夢中になる熱さを描いた作品に心をつかまれます。",
+    books: [
+      { title: "天幕のジャードゥーガル", author: "トマトスープ", tag: "マンガ大賞2023 ノミネート",
+        why: "モンゴル帝国の時代、奴隷として連れ去られた少女が「知識」を武器に生き抜く。かわいい絵柄から始まる壮大な物語に引き込まれます。" },
+      { title: "これ描いて死ね", author: "とよ田みのる", tag: "マンガ大賞2023 大賞",
+        why: "離島に住む高校生が、漫画を描く楽しさに出会ってしまう。「好き」に突き動かされる熱を、まっすぐ受け止められる君へ。" },
+      { title: "図書館の大魔術師", author: "泉光",
+        why: "本と図書館が力を持つ世界で、差別に苦しむ少年が司書を目指す本格ファンタジー。細かく描き込まれた異世界を旅する楽しさがあります。" }
+    ] },
+  IST: { name: "静かに見抜く観察者", color: "--t-ist",
+    catch: "騒がしくなくても、ちゃんと全部見ている。",
+    desc: "ひとりの時間で力を蓄え、事実をていねいに見て、筋の通った判断をするタイプ。派手な事件がなくても、人や物の細部をじっくり描く「渋い」作品の良さがわかる人です。",
+    books: [
+      { title: "本なら売るほど", author: "児島青", tag: "このマンガがすごい!2026 オトコ編1位",
+        why: "古本屋の店主と、本を手に取る人たちの話。一冊の本の来歴から人生がのぞく構成は、細部を見逃さない君にこそ味わってほしい。" },
+      { title: "路傍のフジイ", author: "鍋倉夫",
+        why: "目立たない会社員・藤井は、なぜか毎日が楽しそう。彼に気づいた周りの人たちが少しずつ変わっていく、静かで深い物語です。" },
+      { title: "ミワさんなりすます", author: "緑山のぶひろ",
+        why: "大ファンの俳優の家に、家政婦になりすまして入り込んでしまった女性。ばれるかどうかの緊張と細かな観察が楽しいサスペンス・コメディ。" }
+    ] },
+  ISF: { name: "日常をすくう記録係", color: "--t-isf",
+    catch: "なんでもない一瞬を、ずっと覚えている。",
+    desc: "ひとりの時間を大切にし、目の前の人や景色の小さな変化を、気持ちごと受け止めるタイプ。人生の機微をていねいにすくい上げる作品で深く満たされます。",
+    books: [
+      { title: "海が走るエンドロール", author: "たらちねジョン", tag: "このマンガがすごい!2022 オンナ編1位",
+        why: "夫を亡くした65歳の女性が、映画を撮る側になりたいと気づく。何歳からでも心が動き出すことを、静かに力強く描いています。" },
+      { title: "半分姉弟", author: "藤見よいこ", tag: "このマンガがすごい!2026 オンナ編1位",
+        why: "日本で暮らすミックスルーツの人たちの日常と、そこにある小さな痛み。見過ごされがちな気持ちを受け取れる君に読んでほしい一作。" },
+      { title: "女の園の星", author: "和山やま", tag: "マンガ大賞2023 ノミネート",
+        why: "女子校の国語教師・星先生の、ちょっと変な日常。淡々とした絵と間が生む笑いは、細かいところまで見ている人ほど面白い。" }
+    ] },
+  INT: { name: "問いを育てる思索家", color: "--t-int",
+    catch: "答えより、いい問いを見つけたい。",
+    desc: "ひとりで考える時間が好きで、物事の裏にある意味や理屈をとことん掘り下げるタイプ。読後に考えごとが残る作品や、ひとつのこだわりを突き詰める人物に惹かれます。",
+    books: [
+      { title: "ここは今から倫理です。", author: "雨瀬シオリ",
+        why: "高校の倫理の授業を通して、生徒それぞれの悩みに哲学の言葉で向き合う。考えることが好きな君の「問い」を増やしてくれます。" },
+      { title: "劇光仮面", author: "山口貴由", tag: "マンガ大賞2023 ノミネート",
+        why: "特撮ヒーローを「本物」として突き詰めようとする男たち。こだわりの極みにある狂気と正義を、圧倒的な筆致で描いています。" },
+      { title: "バーナード嬢曰く。", author: "施川ユウキ",
+        why: "読書家に見られたい女子と、本好きの仲間たちの図書室ギャグ。本と読書についての鋭い考察が、笑いの中にたっぷり詰まっています。" }
+    ] },
+  INF: { name: "余白を愛する夢想家", color: "--t-inf",
+    catch: "言葉にならないものほど、大切にしたい。",
+    desc: "ひとりの時間に想像を広げ、気持ちの奥にあるものを感じ取るタイプ。説明しすぎない静かな世界や、ふたりの関係をじっくり描く物語が、心の深いところに届きます。",
+    books: [
+      { title: "君と宇宙を歩くために", author: "泥ノ田犬彦", tag: "マンガ大賞2024 大賞",
+        why: "勉強もバイトも続かない不良の小林と、「ふつう」が難しい転校生の宇野。ふたりが互いのやり方で一歩ずつ進む姿に、静かに胸を打たれます。" },
+      { title: "少女終末旅行", author: "つくみず",
+        why: "文明が終わった世界を、2人の少女が小さな乗り物で旅していく。さみしくて、あたたかい。余白の多い物語が好きな君の本棚に。" },
+      { title: "とつくにの少女", author: "ながべ",
+        why: "触れると呪われる異形の「先生」と、少女シーヴァの暮らし。絵本のような白黒の世界に、言葉にしない想いがあふれています。" }
+    ] }
+};
+
+
+// One novel and one film per type, shown after the manga picks.
+const EXTRAS = {
+  EST: { novel: { title: "盤上の向日葵", by: "柚月裕子", why: "山中で見つかった遺体と、名匠の将棋駒。刑事の捜査と天才棋士の半生が交互に進む、勝負の世界のミステリーです。" },
+         movie: { title: "マネーボール", by: "ベネット・ミラー監督・2011年", why: "資金のない球団が、データという新しい武器で強豪に挑む実話。盤面を読み直して勝ち筋を探す快感があります。" } },
+  ESF: { novel: { title: "木曜日にはココアを", by: "青山美智子", why: "小さな喫茶店から始まり、人から人へと想いがリレーしていく連作短編。誰かの一言が誰かを救う話が好きな君に。" },
+         movie: { title: "横道世之介", by: "沖田修一監督・2013年", why: "お人好しな大学生・世之介と過ごした日々を、周りの人たちが思い出す。いるだけで周りを明るくする人の物語です。" } },
+  ENT: { novel: { title: "虐殺器官", by: "伊藤計劃", why: "世界各地で虐殺が起きる近未来、その裏にいる謎の男を追う軍人の物語。「もしも」を極限まで突き詰めたSFの傑作です。" },
+         movie: { title: "プライマー", by: "シェーン・カルース監督・2004年", why: "ガレージで発明をしていた技術者たちが、偶然とんでもない装置を作ってしまう。何度も見返して仕組みを解きたくなる一本。" } },
+  ENF: { novel: { title: "精霊の守り人", by: "上橋菜穂子", why: "女用心棒バルサが、命を狙われる皇子を守って旅をする。作り込まれた異世界と、人を守る強さに心が震えます。" },
+         movie: { title: "はじまりのうた", by: "ジョン・カーニー監督・2013年", why: "どん底の音楽プロデューサーとシンガーソングライターが、ニューヨークの街角でアルバムを録り始める。作る楽しさがはじける映画です。" } },
+  IST: { novel: { title: "羊と鋼の森", by: "宮下奈都", why: "ピアノの調律師を目指す青年が、音という見えないものを少しずつ聴き分けていく。細部に宿るものを信じる人の物語です。" },
+         movie: { title: "パターソン", by: "ジム・ジャームッシュ監督・2016年", why: "バス運転手のパターソンは、毎日同じ道を走りながらノートに詩を書く。くり返しの中にある小さな違いを見つける映画です。" } },
+  ISF: { novel: { title: "ツバキ文具店", by: "小川糸", why: "鎌倉で手紙の代筆を請け負う女性のもとに、さまざまな想いが持ち込まれる。言葉にしにくい気持ちをすくい上げる話です。" },
+         movie: { title: "かもめ食堂", by: "荻上直子監督・2006年", why: "ヘルシンキで小さな食堂を開いた日本人女性と、そこに集まる人たち。おにぎりとコーヒーの湯気のような、静かな幸せの映画です。" } },
+  INT: { novel: { title: "あなたの人生の物語", by: "テッド・チャン", why: "言語、数学、神の存在など、思考実験のようなテーマを描く短編集。読み終えたあとに世界の見え方が少し変わります。" },
+         movie: { title: "十二人の怒れる男", by: "シドニー・ルメット監督・1957年", why: "一室にこもった陪審員12人が、少年の有罪・無罪を議論する。ひとりの「本当にそうか？」から議論がひっくり返っていきます。" } },
+  INF: { novel: { title: "家守綺譚", by: "梨木香歩", why: "亡き友の家を守る物書きのもとに、河童や狸、サルスベリの木の想いが訪れる。夢と現実の境目がやわらかい物語です。" },
+         movie: { title: "はちどり", by: "キム・ボラ監督・2018年", why: "1994年のソウル、14歳の少女ウニの揺れる日々。説明しすぎない静かな映像に、言葉にならない感情が満ちています。" } }
+};
+
+const REACT = {
+  2: ["ほうほう、即答じゃな。", "ふむ、やはりな。", "なるほどのう！"],
+  1: ["ふむふむ……。", "なるほど、少しそうか。", "ほう。"],
+  "-1": ["ほう、そっちか。", "ふむ……意外じゃ。", "なるほどのう。"],
+  "-2": ["ほう、きっぱりじゃな！", "そう来たか。", "ふむ、覚えておこう。"]
+};
+
+// ---------- state & helpers ----------
+const app = document.getElementById("app");
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let answers = [];
+let typingTimer = null;
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const cvar = key => `--c: var(${TYPES[key].color})`;
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+function render(html) {
+  clearTimeout(typingTimer);
+  app.innerHTML = html;
+  app.firstElementChild?.classList.add("fade-in");
+}
+
+function stage(mood, text, big = false) {
+  return `
+    <section class="panel stage">
+      <div class="beta-wrap" data-mood="${mood}">${BETA_SVG}</div>
+      <div class="balloon">
+        <div class="speaker">ベタ丸</div>
+        <p class="say${big ? " big" : ""}" id="say" data-text="${esc(text)}"></p>
+      </div>
+    </section>`;
+}
+
+function setMood(mood) {
+  const svg = app.querySelector(".beta");
+  if (!svg) return;
+  svg.classList.remove("is-think", "is-happy", "is-wow");
+  if (mood !== "normal") svg.classList.add("is-" + mood);
+}
+
+function type(text) {
+  const el = document.getElementById("say");
+  if (!el) return;
+  clearTimeout(typingTimer);
+  if (reduceMotion) { el.textContent = text; return; }
+  let n = 0;
+  const tick = () => {
+    el.innerHTML = esc(text.slice(0, n)) + (n < text.length ? '<span class="caret">▍</span>' : "");
+    if (n++ < text.length) typingTimer = setTimeout(tick, 28);
+  };
+  tick();
+}
+
+function boot(mood) {
+  setMood(mood);
+  const say = document.getElementById("say");
+  if (say) type(say.dataset.text);
+  window.scrollTo({ top: 0 });
+}
+
+// ---------- screens ----------
+function intro() {
+  answers = [];
+  const all = Object.entries(TYPES).flatMap(([k, t]) => t.books.map(b => ({ k, title: b.title })));
+  render(`
+    <div class="stack">
+      ${stage("normal", "わしはベタ丸。12の質問で、君にぴったりの一冊を当ててみせよう。")}
+      <section class="panel stack">
+        <div class="row">
+          <button class="btn" id="start" type="button">ベタ丸の質問に答える</button>
+          <span class="fine">4択・12問。直感で答えるのがコツ。</span>
+        </div>
+      </section>
+      <section class="panel stack">
+        <div class="label">ベタ丸の本棚 ｜ 8タイプ × 3作品</div>
+        <div class="shelf-strip" aria-hidden="true">
+          ${all.map((b, i) => `<div class="mini-spine" style="${cvar(b.k)}; height:${78 + (i * 37 % 40)}px">${esc(b.title)}</div>`).join("")}
+        </div>
+        <p class="fine">誰もが知る大ヒット作はあえて外しました。マンガ大賞・このマンガがすごい!・次にくるマンガ大賞の受賞作やノミネート作、そして読み手の間で評価の高い作品から選んでいます。結果では、同じタイプに合う小説と映画も1本ずつ紹介します。</p>
+      </section>
+    </div>`);
+  boot("normal");
+  document.getElementById("start").onclick = () => question(0, "では第1問。深く考えず、パッと答えるのじゃぞ。");
+}
+
+function question(i, lead) {
+  const Q = QUESTIONS[i];
+  const text = (lead ? lead + "\n" : "") + Q.q;
+  render(`
+    <div class="stack">
+      ${stage(i === 0 ? "normal" : "think", Q.q)}
+      <section class="panel stack">
+        <div class="qhead">
+          <span class="qno">質問 ${i + 1}<em>/ ${QUESTIONS.length}</em></span>
+          <button class="link-btn" id="back" type="button" ${i === 0 ? "disabled" : ""}>← ひとつ戻る</button>
+        </div>
+        <div class="progress" aria-hidden="true">
+          ${QUESTIONS.map((_, j) => `<i class="${j < i ? "done" : j === i ? "now" : ""}"></i>`).join("")}
+        </div>
+        <div class="answers" id="answers">
+          ${ANSWERS.map((a, j) => `
+            <button class="answer${answers[i] === j ? " picked" : ""}" type="button" data-j="${j}">
+              <span>${a.label}</span><small>${a.sub}</small>
+            </button>`).join("")}
+        </div>
+      </section>
+    </div>`);
+  boot("normal");
+  if (lead) {
+    const el = document.getElementById("say");
+    el.dataset.text = text;
+    el.style.whiteSpace = "pre-line";
+    type(text);
+  }
+  document.getElementById("back").onclick = () => question(i - 1, "よし、戻ろう。");
+  document.querySelectorAll(".answer").forEach(btn => btn.onclick = () => {
+    const j = +btn.dataset.j;
+    answers[i] = j;
+    answers.length = i + 1;
+    btn.classList.add("picked");
+    document.getElementById("answers").classList.add("locked");
+    setMood(Math.abs(ANSWERS[j].w) === 2 ? "wow" : "think");
+    const next = i + 1;
+    if (next >= QUESTIONS.length) { setTimeout(thinking, 380); return; }
+    setTimeout(() => question(next, hint(next) || pick(REACT[ANSWERS[j].w])), 380);
+  });
+}
+
+// Mid-quiz teasers once each axis has a couple of answers.
+function hint(next) {
+  if (next !== 6 && next !== 9) return null;
+  const s = axisScores();
+  const key = next === 6 ? "energy" : "sense";
+  const pole = leaning(key, s[key]);
+  return `……見えてきたぞ。君は「${AXES[key].poles[pole]}」タイプの匂いがする。`;
+}
+
+function axisScores() {
+  const s = { energy: 0, sense: 0, judge: 0 };
+  const first = { energy: "E", sense: "N", judge: "F" };
+  answers.forEach((j, i) => {
+    const Q = QUESTIONS[i];
+    s[Q.axis] += ANSWERS[j].w * (Q.yes === first[Q.axis] ? 1 : -1);
+  });
+  return s; // positive = E / N / F
+}
+function leaning(axis, v) {
+  const [a, b] = Object.keys(AXES[axis].poles);
+  const pos = { energy: "E", sense: "N", judge: "F" }[axis];
+  const neg = a === pos ? b : a;
+  return v >= 0 ? pos : neg;
+}
+
+function thinking() {
+  render(`<div class="stack">${stage("think", "むむむ……12の答えを並べて、本棚と照らし合わせておる……")}</div>`);
+  boot("think");
+  setTimeout(result, reduceMotion ? 600 : 2200);
+}
+
+function result() {
+  const s = axisScores();
+  const key = ["energy", "sense", "judge"].map(k => leaning(k, s[k])).join(""); // e.g. "INF"
+  const T = TYPES[key];
+  const X = EXTRAS[key];
+  const [main, ...rest] = T.books;
+
+  // For each axis, cite the answer that pushed hardest toward the winning pole.
+  const clues = ["energy", "sense", "judge"].map(axis => {
+    const pole = leaning(axis, s[axis]);
+    let best = null;
+    answers.forEach((j, i) => {
+      const Q = QUESTIONS[i];
+      if (Q.axis !== axis) return;
+      const toward = ANSWERS[j].w * (Q.yes === pole ? 1 : -1);
+      if (!best || toward > best.toward) best = { Q, j, toward };
+    });
+    const max = 8; // 4 questions × weight 2
+    const pos = { energy: "E", sense: "N", judge: "F" }[axis];
+    const pct = 50 + (s[axis] / max) * 50 * (pos === Object.keys(AXES[axis].poles)[0] ? -1 : 1);
+    return { axis, pole, best, pct };
+  });
+
+  render(`
+    <div class="stack">
+      ${stage("happy", `わかったぞ！ 君は「${T.name}」じゃ！ そんな君への一冊は……これじゃ！`, true)}
+
+      <article class="panel book hero-book" style="${cvar(key)}; padding:0">
+        <div class="spine" aria-hidden="true">${esc(main.title)}</div>
+        <div class="book-body">
+          <div class="label">ベタ丸の本命</div>
+          <h3>${esc(main.title)}</h3>
+          <div class="author">${esc(main.author)}</div>
+          ${main.tag ? `<span class="tag">${esc(main.tag)}</span>` : ""}
+          <p class="why">${esc(main.why)}</p>
+          <a href="https://www.google.com/search?q=${encodeURIComponent(main.title + " " + main.author + " 漫画")}" target="_blank" rel="noopener">作品を検索する →</a>
+        </div>
+      </article>
+
+      <section class="panel stack type-card" style="${cvar(key)}">
+        <div class="kicker">君の読者タイプ</div>
+        <h1 class="typename">${T.name}</h1>
+        <p class="catch">${T.catch}</p>
+        <p class="lede">${T.desc}</p>
+      </section>
+
+      <section class="panel stack">
+        <h2>ベタ丸の推理メモ</h2>
+        <div class="deduce">
+          ${clues.map(c => {
+            const [a, b] = Object.keys(AXES[c.axis].poles);
+            return `
+            <div class="clue" style="${cvar(key)}">
+              <div class="label">${AXES[c.axis].label}</div>
+              <p class="clue-q">「${esc(c.best.Q.q)}」に <b>${ANSWERS[c.best.j].label}</b> と答えたな。</p>
+              <div class="meter">
+                <span class="${c.pole === a ? "win" : ""}">${AXES[c.axis].poles[a]}</span>
+                <div class="meter-track"><div class="meter-dot" style="left:50%" data-left="${Math.max(4, Math.min(96, c.pct))}"></div></div>
+                <span class="${c.pole === b ? "win" : ""}">${AXES[c.axis].poles[b]}</span>
+              </div>
+              <p class="clue-why">${esc(c.best.Q.yes === c.pole ? c.best.Q.why : c.best.Q.whyNo)}つまり君は「${AXES[c.axis].poles[c.pole]}」寄りじゃ。</p>
+            </div>`;
+          }).join("")}
+        </div>
+      </section>
+
+      <section class="panel stack">
+        <h2>本命のあとに読むなら</h2>
+        <div class="more">
+          ${rest.map(b => `
+            <article class="book" style="${cvar(key)}">
+              <div class="spine" aria-hidden="true">${esc(b.title)}</div>
+              <div class="book-body">
+                <h3>${esc(b.title)}</h3>
+                <div class="author">${esc(b.author)}</div>
+                ${b.tag ? `<span class="tag">${esc(b.tag)}</span>` : ""}
+                <p class="why">${esc(b.why)}</p>
+                <a href="https://www.google.com/search?q=${encodeURIComponent(b.title + " " + b.author + " 漫画")}" target="_blank" rel="noopener">作品を検索する →</a>
+              </div>
+            </article>`).join("")}
+        </div>
+      </section>
+
+      <section class="panel stack">
+        <h2>漫画以外なら、これもどうじゃ</h2>
+        <div class="more">
+          ${[["小説", X.novel], ["映画", X.movie]].map(([kind, w]) => `
+            <article class="book" style="${cvar(key)}">
+              <div class="spine" aria-hidden="true">${kind}</div>
+              <div class="book-body">
+                <span class="tag">${kind}</span>
+                <h3>${esc(w.title)}</h3>
+                <div class="author">${esc(w.by)}</div>
+                <p class="why">${esc(w.why)}</p>
+                <a href="https://www.google.com/search?q=${encodeURIComponent(w.title + " " + w.by.split("・")[0] + " " + kind)}" target="_blank" rel="noopener">作品を検索する →</a>
+              </div>
+            </article>`).join("")}
+        </div>
+      </section>
+
+      <div class="row">
+        <button class="btn" id="again" type="button">もう一度診断する</button>
+        <button class="btn ghost" id="copy" type="button">結果をコピー</button>
+        <span class="copied" id="copied" role="status"></span>
+      </div>
+    </div>`);
+  boot("happy");
+
+  requestAnimationFrame(() => requestAnimationFrame(() =>
+    app.querySelectorAll(".meter-dot").forEach(el => el.style.left = el.dataset.left + "%")));
+
+  document.getElementById("again").onclick = intro;
+  document.getElementById("copy").onclick = () => {
+    const text = `マンガ性格診断の結果：「${T.name}」\n${T.catch}\nベタ丸の本命：『${main.title}』（${main.author}）\n次に読むなら：${rest.map(b => "『" + b.title + "』").join(" ")}\n小説：『${X.novel.title}』（${X.novel.by}）\n映画：『${X.movie.title}』（${X.movie.by}）`;
+    const msg = document.getElementById("copied");
+    navigator.clipboard.writeText(text)
+      .then(() => { msg.textContent = "コピーしました"; })
+      .catch(() => { msg.textContent = text; });
+  };
+}
+
+intro();
+</script>
+</body>
+</html>
