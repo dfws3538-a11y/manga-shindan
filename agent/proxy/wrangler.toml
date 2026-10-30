@@ -1,0 +1,8 @@
+name = "aoi-proxy"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+# GitHub Pages のURL（末尾スラッシュなし）。複数ある場合はカンマ区切り
+ALLOWED_ORIGINS = "https://dfws3538-a11y.github.io"
+ALLOWED_MODEL = "claude-opus-5-5"
