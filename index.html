@@ -201,6 +201,7 @@ p { margin: 0; }
 .author { font-size: .82rem; color: var(--ink-soft); }
 .tag { justify-self: start; font-size: .72rem; font-weight: 700; border: 2px solid var(--ink); background: var(--marker); color: var(--on-marker); padding: 1px 8px; }
 .why { font-size: .93rem; }
+.app-tag { justify-self: start; font-size: .72rem; font-weight: 700; border: 2px solid var(--c); color: var(--ink); padding: 1px 8px; }
 .book-body a { font-size: .8rem; color: var(--accent); font-weight: 700; text-underline-offset: 3px; justify-self: start; }
 .more { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; }
 .copied { font-size: .85rem; color: var(--ink-soft); }
@@ -222,7 +223,7 @@ footer { text-align: center; font-size: .78rem; color: var(--ink-soft); }
     <small>全12問・約2分</small>
   </header>
   <main id="app"></main>
-  <footer>受賞・ノミネート歴は「マンガ大賞」「このマンガがすごい!」（宝島社）「次にくるマンガ大賞」の発表に基づきます。</footer>
+  <footer>受賞・ノミネート歴は「マンガ大賞」「このマンガがすごい!」（宝島社）「次にくるマンガ大賞」の発表に基づきます。アプリの連載状況は2026年10月時点で確認したものです。</footer>
 </div>
 
 <script>
@@ -414,7 +415,7 @@ const TYPES = {
       { title: "ダイヤモンドの功罪", author: "平井大橋", tag: "このマンガがすごい! オトコ編1位",
         why: "才能がありすぎる少年が野球を始めたことで、周りの子どもや大人が揺れていく。勝つことの意味を正面から問う、ひりつくスポーツ漫画です。" },
       { title: "サンキューピッチ", author: "住吉九", tag: "次にくるマンガ大賞2025 Webマンガ部門1位",
-        why: "『ハイパーインフレーション』の作者が描く野球漫画。作戦と駆け引きでひっくり返していく面白さは、盤面を読むのが好きな君向き。" },
+        why: "『ハイパーインフレーション』の作者が描く野球漫画。ケガの後遺症で1日3球しか全力で投げられない投手が、仲間と頭脳戦で勝ちをもぎ取る。盤面を読むのが好きな君向き。" },
       { title: "ジャンケットバンク", author: "田中一行",
         why: "銀行の地下で行われる命がけのギャンブルを、新人行員が見届ける頭脳戦。ルールの穴を突く読み合いがクセになります。" }
     ] },
@@ -497,6 +498,26 @@ const TYPES = {
     ] }
 };
 
+
+// One title per type that is being serialized right now on a manga app (checked Oct 2026).
+const APPS = {
+  EST: { title: "ハナバス 苔石花江のバスケ論", author: "三好宏平", app: "マガポケ",
+         why: "人付き合いが苦手で生き物好きの高校生・花江が、なぜかバスケ部で勝負をすることに。コミュ障の女の子がチームスポーツで化けていく、熱い青春バスケ漫画です。" },
+  ESF: { title: "おかえり水平線", author: "渡部大羊", app: "少年ジャンプ+", tag: "次にくるマンガ大賞2026 Webマンガ部門1位",
+         why: "海辺の街の銭湯で祖父と暮らす高校生のもとに、父の隠し子を名乗る少年が現れる。違う時間を生きてきたふたりが同じ湯に浸かり、少しずつ家族になっていきます。" },
+  ENT: { title: "大人大戦", author: "かっぴー・都築真佐秋", app: "少年ジャンプ+", tag: "次にくるマンガ大賞2026 ランクイン",
+         why: "15年の昏睡から目覚めると、東京は国家公認SNSで全員が監視される社会になっていた。評判がすべてを決める仕組みの裏に挑むサバイバルドラマです。" },
+  ENF: { title: "ヒトナー", author: "屋宜知宏", app: "少年ジャンプ+", tag: "次にくるマンガ大賞2026 ノミネート",
+         why: "獣人が暮らす星に、神話の怪物だと思われていた「ヒト」が降り立つ。言葉も通じない相手と手探りで心を通わせていく、異種族交流SFです。" },
+  IST: { title: "来見沢善彦の愚行", author: "ときわ四葩", app: "少年ジャンプ+", tag: "次にくるマンガ大賞2026 ランクイン",
+         why: "1971年、新作が通らず行き詰まったかつての人気漫画家が、才能ある若者の原稿を見て禁断の手段に出る。創作の裏側をじっと見つめるような物語です。" },
+  ISF: { title: "薫る花は凛と咲く", author: "三香見サカ", app: "マガポケ",
+         why: "隣り合う男子校と女子校、仲の悪い2校の生徒が出会う。相手をまっすぐ見ようとするふたりの、ていねいでやさしい関係の積み重ねが心に残ります。" },
+  INT: { title: "アイドラトリィ", author: "大鷹シン・ホマレ", app: "マガポケ", tag: "次にくるマンガ大賞2026 ノミネート",
+         why: "推しのアイドルの夢を叶えるため、オタクの女子高生が自らオーディション番組に参加して裏で暗躍する。約100人の中で順位を操る、頭脳戦のアイドルサバイバルです。" },
+  INF: { title: "都市伝説先輩", author: "平岡一輝", app: "少年ジャンプ+", tag: "次にくるマンガ大賞2026 ランクイン",
+         why: "オカルトサークルに入ったのに、そこはただの飲みサーだった。都市伝説を引き寄せる先輩を頼りに、不思議な大学生活を取り戻そうとするオカルトコメディです。" }
+};
 
 // One novel and one film per type, shown after the manga picks.
 const EXTRAS = {
@@ -597,7 +618,7 @@ function intro() {
         <div class="shelf-strip" aria-hidden="true">
           ${all.map((b, i) => `<div class="mini-spine" style="${cvar(b.k)}; height:${78 + (i * 37 % 40)}px">${esc(b.title)}</div>`).join("")}
         </div>
-        <p class="fine">誰もが知る大ヒット作はあえて外しました。マンガ大賞・このマンガがすごい!・次にくるマンガ大賞の受賞作やノミネート作、そして読み手の間で評価の高い作品から選んでいます。結果では、同じタイプに合う小説と映画も1本ずつ紹介します。</p>
+        <p class="fine">誰もが知る大ヒット作はあえて外しました。マンガ大賞・このマンガがすごい!・次にくるマンガ大賞の受賞作やノミネート作、そして読み手の間で評価の高い作品から選んでいます。結果では、少年ジャンプ+・マガポケで連載中の作品と、同じタイプに合う小説・映画も紹介します。</p>
       </section>
     </div>`);
   boot("normal");
@@ -683,6 +704,7 @@ function result() {
   const key = ["energy", "sense", "judge"].map(k => leaning(k, s[k])).join(""); // e.g. "INF"
   const T = TYPES[key];
   const X = EXTRAS[key];
+  const A = APPS[key];
   const [main, ...rest] = T.books;
 
   // For each axis, cite the answer that pushed hardest toward the winning pole.
@@ -762,6 +784,21 @@ function result() {
       </section>
 
       <section class="panel stack">
+        <h2>アプリで今すぐ読める連載中の一作</h2>
+        <article class="book" style="${cvar(key)}">
+          <div class="spine" aria-hidden="true">${esc(A.app)}</div>
+          <div class="book-body">
+            <span class="app-tag">${esc(A.app)}で連載中</span>
+            <h3>${esc(A.title)}</h3>
+            <div class="author">${esc(A.author)}</div>
+            ${A.tag ? `<span class="tag">${esc(A.tag)}</span>` : ""}
+            <p class="why">${esc(A.why)}</p>
+            <a href="https://www.google.com/search?q=${encodeURIComponent(A.title + " " + A.app)}" target="_blank" rel="noopener">${esc(A.app)}で探す →</a>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel stack">
         <h2>漫画以外なら、これもどうじゃ</h2>
         <div class="more">
           ${[["小説", X.novel], ["映画", X.movie]].map(([kind, w]) => `
@@ -791,7 +828,7 @@ function result() {
 
   document.getElementById("again").onclick = intro;
   document.getElementById("copy").onclick = () => {
-    const text = `マンガ性格診断の結果：「${T.name}」\n${T.catch}\nベタ丸の本命：『${main.title}』（${main.author}）\n次に読むなら：${rest.map(b => "『" + b.title + "』").join(" ")}\n小説：『${X.novel.title}』（${X.novel.by}）\n映画：『${X.movie.title}』（${X.movie.by}）`;
+    const text = `マンガ性格診断の結果：「${T.name}」\n${T.catch}\nベタ丸の本命：『${main.title}』（${main.author}）\n次に読むなら：${rest.map(b => "『" + b.title + "』").join(" ")}\nアプリで連載中：『${A.title}』（${A.app}）\n小説：『${X.novel.title}』（${X.novel.by}）\n映画：『${X.movie.title}』（${X.movie.by}）`;
     const msg = document.getElementById("copied");
     navigator.clipboard.writeText(text)
       .then(() => { msg.textContent = "コピーしました"; })
