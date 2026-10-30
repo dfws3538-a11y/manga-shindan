@@ -66,6 +66,24 @@ h1 small{display:block;font-family:var(--f-body);font-size:12.5px;font-weight:70
 .dots i{width:12px;height:12px;border-radius:50%;border:1.5px dashed var(--muted)}
 .dots i.on{background:var(--hanko);border:1.5px solid var(--hanko)}
 
+.hdr-right{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.pairbtn{display:inline-flex;align-items:center;gap:8px;border:2px solid var(--ink);background:var(--panel);border-radius:999px;padding:8px 16px;font-weight:700;font-size:14px;box-shadow:3px 3px 0 var(--ink);max-width:260px}
+.pairbtn #pairTxt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pairbtn .dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--muted);flex:none}
+.pairbtn.on .dot{background:var(--leaf);border-color:var(--leaf)}
+.pairbtn.wait .dot{background:var(--custard);border-color:var(--caramel)}
+.code{font-family:var(--f-display);font-size:32px;letter-spacing:.14em;text-align:center;background:var(--bg);border:2px dashed var(--caramel);border-radius:14px;padding:10px 8px;margin:6px 0 10px;user-select:all;font-variant-numeric:tabular-nums}
+.pairsec{border-top:2px dashed var(--line);padding-top:12px;margin-top:12px;display:grid;gap:8px}
+.pairsec h3{margin:0;font-size:15px}
+.pairsec p,.pairnote{margin:0;font-size:13px;color:var(--muted)}
+.codein{font-family:var(--f-display);font-size:22px;letter-spacing:.12em;text-transform:uppercase;text-align:center;border:2px solid var(--line);background:var(--bg);border-radius:12px;padding:8px;width:100%}
+.err{color:var(--hanko);font-weight:700;font-size:13px;margin:0}
+.members{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+.members li{display:flex;align-items:center;gap:6px;background:var(--chip);border-radius:999px;padding:3px 12px 3px 4px;font-weight:700;font-size:13px}
+.members img{width:24px;height:24px;border-radius:50%}
+.check{display:flex!important;grid-template-columns:none!important;align-items:center;gap:8px!important;font-weight:500!important}
+.whoate{grid-column:1/-1;margin:0;font-size:12.5px;color:var(--hanko);font-weight:700}
+.stampbtn.partner{border:2.5px solid color-mix(in srgb,var(--hanko) 45%,transparent);color:var(--hanko);background:color-mix(in srgb,var(--hanko) 6%,transparent)}
 /* ---- 本体 ---- */
 .app{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;width:100%;max-width:1320px;margin:0 auto;flex:1;min-height:560px}
 @media (max-width:860px){.app{grid-template-columns:1fr;flex:none}.mapwrap{height:54vh;min-height:360px}.side{height:auto;max-height:none}.list{max-height:none;overflow:visible}}
@@ -201,6 +219,8 @@ dialog input,dialog textarea{border:2px solid var(--line);background:var(--bg);b
 <body>
 <header>
   <h1><small>全国の絶品プリンだけを集めた</small>プリンめぐり地図</h1>
+  <div class="hdr-right">
+  <button type="button" class="pairbtn" id="pairBtn"><span class="dot" aria-hidden="true"></span><span id="pairTxt">ふたりで共有</span></button>
   <button type="button" class="bloom" id="bloomBadge" aria-label="スタンプ帳を開く">
     <span id="bloomFlower"></span>
     <span>
@@ -212,6 +232,7 @@ dialog input,dialog textarea{border:2px solid var(--line);background:var(--bg);b
       <span class="next" id="nextTxt"></span>
     </span>
   </button>
+  </div>
 </header>
 
 <main class="app">
@@ -251,6 +272,10 @@ dialog input,dialog textarea{border:2px solid var(--line);background:var(--bg);b
 
 <div class="celebrate" id="celebrate" hidden></div>
 <div class="toast" id="toast" role="status" hidden></div>
+
+<dialog id="pairDlg" aria-labelledby="pairH">
+  <div id="pairBody"></div>
+</dialog>
 
 <dialog id="addDlg">
   <form id="addForm" method="dialog">
@@ -394,24 +419,47 @@ const REGIONS = {
 };
 const regionOf = s => Object.keys(REGIONS).find(r => REGIONS[r].includes(s.pref)) || "その他";
 
-// ---- 保存（このブラウザだけ） ----
+// ---- 記録（ひとり：このブラウザに保存／ふたり：招待コードの共有データに保存） ----
+// S.ate: id -> {記録した人: ミリ秒|null}　S.want: id -> true|null　S.mine: id -> 推しプリン|null
 const store = {
   get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
   set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
-let ate  = store.get("purin.ate", null);    // id -> "YYYY-MM-DD"（押した順）
-let want = store.get("purin.want", null);   // id -> 1
-if (!ate || !want) {                         // 旧バージョンの記録を引き継ぐ
-  const old = store.get("purin.marks", {}); ate = ate || {}; want = want || {};
-  for (const [id, m] of Object.entries(old)) { if (m === "ate") ate[id] = today(); if (m === "want") want[id] = 1; }
-  store.set("purin.ate", ate); store.set("purin.want", want);
+const SOLO = "me";
+let uid = null, pair = null, db = null, user = null, canWrite = null, names = {};
+const meKey = () => pair ? uid : SOLO;
+function loadSolo(){
+  let v = store.get("purin.v2", null);
+  if (v) return v;
+  v = {ate:{}, want:{}, mine:{}};               // 旧バージョンの記録を引き継ぐ
+  for (const [id, m] of Object.entries(store.get("purin.marks", {}))) { if (m === "ate") v.ate[id] = {[SOLO]: Date.now()}; if (m === "want") v.want[id] = true; }
+  for (const [id, d] of Object.entries(store.get("purin.ate", {}))) v.ate[id] = {[SOLO]: new Date(d + "T12:00:00").getTime() || Date.now()};
+  for (const id of Object.keys(store.get("purin.want", {}))) v.want[id] = true;
+  for (const m of store.get("purin.mine", [])) v.mine[m.id] = m;
+  store.set("purin.v2", v); return v;
 }
-let mine = store.get("purin.mine", []);
-const all = () => SHOPS.concat(mine);
+let S = loadSolo();
+function merge(t, p){ for (const k in p) { const v = p[k]; if (v && typeof v === "object" && !Array.isArray(v)) { if (!t[k] || typeof t[k] !== "object") t[k] = {}; merge(t[k], v); } else t[k] = v; } return t; }
+let writeQ = Promise.resolve();
+function write(patch){
+  merge(S, patch);
+  if (!pair) { store.set("purin.v2", S); return; }
+  const ref = pair.ref;                           // 同じ共有データへの書き込みは1つずつ順番に
+  writeQ = writeQ.then(() => ref.update(patch)).catch(() => toast("共有に保存できませんでした。通信状態を確認してください"));
+}
+const mineList = () => Object.values(S.mine || {}).filter(Boolean);
+const all = () => SHOPS.concat(mineList());
 const byId = id => all().find(s => s.id === id);
-function today(){ const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
-const md = d => d ? `${+d.slice(5,7)}/${+d.slice(8,10)}` : "";
-const ateCount = () => Object.keys(ate).filter(id => byId(id)).length;
+const whoAte = id => Object.entries((S.ate || {})[id] || {}).filter(([, t]) => t);
+const isAte = id => whoAte(id).length > 0;
+const myTs = id => ((S.ate || {})[id] || {})[meKey()] || 0;
+const firstTs = id => Math.min(...whoAte(id).map(x => x[1]));
+const isWant = id => !!(S.want || {})[id];
+const ateOrder = () => all().filter(s => isAte(s.id)).map(s => s.id).sort((a, b) => firstTs(a) - firstTs(b));
+const ateCount = () => ateOrder().length;
+const md = t => { if (!t) return ""; const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()}`; };
+const partnerId = () => pair && Object.keys(pair.members).find(k => pair.members[k] && k !== uid);
+const partnerName = () => names[partnerId()] || "パートナー";
 
 // ---- プリンの花（SVG） ----
 function flowerSVG(petals, opts = {}){
@@ -510,8 +558,8 @@ const matches = s => {
   const q = filters.q.trim();
   if (q && !(s.pudding + s.shop + s.pref + s.city + (s.note || "") + s.tags.join("")).includes(q)) return false;
   if (filters.region !== "全国" && regionOf(s) !== filters.region) return false;
-  if (filters.tag === "まだ食べてない") return !ate[s.id];
-  if (filters.tag === "♥ 食べたい") return !!want[s.id];
+  if (filters.tag === "まだ食べてない") return !isAte(s.id);
+  if (filters.tag === "♥ 食べたい") return isWant(s.id);
   if (filters.tag === "マイプリン") return !!s.mine;
   if (filters.tag !== "すべて" && !s.tags.includes(filters.tag)) return false;
   return true;
@@ -530,16 +578,20 @@ function drawPins(){
 
 // ---- 共通部品 ----
 const esc = t => String(t ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const stampHTML = (id, big = false) => ate[id]
-  ? `<button type="button" class="stampbtn done ${big ? "big" : ""}" data-stamp="${id}" aria-label="スタンプ済み（${md(ate[id])}）">済<small>${md(ate[id])}</small></button>`
-  : `<button type="button" class="stampbtn ${big ? "big" : ""}" data-stamp="${id}" aria-label="食べた！スタンプを押す">食べた<br>！</button>`;
+function stampHTML(id, big = false){
+  const t = myTs(id), both = pair && whoAte(id).length > 1, other = whoAte(id).some(([k]) => k !== meKey());
+  const cls = `stampbtn ${big ? "big" : ""}`;
+  if (t) return `<button type="button" class="${cls} done" data-stamp="${id}" aria-label="スタンプ済み（${md(t)}）">済<small>${both ? "ふたり" : md(t)}</small></button>`;
+  if (other) return `<button type="button" class="${cls} partner" data-stamp="${id}" aria-label="${esc(partnerName())}さんが食べたお店。自分のスタンプも押す">相手<br>済</button>`;
+  return `<button type="button" class="${cls}" data-stamp="${id}" aria-label="食べた！スタンプを押す">食べた<br>！</button>`;
+}
 // 詳細ページ：確認済みのページがあればそれ、無ければGoogle検索
 const detail = s => s.url
   ? {href: s.url, label: s.src === "公式" ? "公式サイト" : s.src, host: new URL(s.url).hostname.replace(/^www\./, ""), found: true}
   : {href: `https://www.google.com/search?q=${encodeURIComponent(s.shop + " " + s.pref + " プリン")}`, label: "Googleで調べる", host: "google.com", found: false};
 // スタンプ帳のマス用（押せない表示だけのはんこ）
-const stampFace = id => ate[id]
-  ? `<span class="stampbtn done">済<small>${md(ate[id])}</small></span>`
+const stampFace = id => isAte(id)
+  ? `<span class="stampbtn done">済<small>${md(firstTs(id))}</small></span>`
   : `<span class="stampbtn">まだ</span>`;
 
 // ---- さがす（リスト） ----
@@ -551,41 +603,41 @@ function chips(id, items, key){
 }
 function refresh(){
   const vis = all().filter(matches).sort((a, b) => b.lat - a.lat);
-  document.getElementById("result").textContent = `${vis.length}店　（うちスタンプ済み ${vis.filter(s => ate[s.id]).length}店）`;
+  document.getElementById("result").textContent = `${vis.length}店　（うちスタンプ済み ${vis.filter(s => isAte(s.id)).length}店）`;
   listEl.innerHTML = vis.length ? "" : `<li class="empty">条件に合うプリンがありません。<br>しぼりこみを「すべて」に戻してみてください。</li>`;
   vis.forEach(s => {
     const li = document.createElement("li"); if (s.id === activeId) li.className = "active";
     const dt = detail(s);
     li.innerHTML = `<div class="infowrap"><button type="button" class="info"><div class="nm">${esc(s.pudding)}</div><div class="sub">${esc(s.shop)}${s.mine ? "（マイプリン）" : ""}<br>${esc(s.pref)} ${esc(s.city)}</div></button>
       ${s.mine ? "" : `<a class="detlink ${dt.found ? "" : "search"}" href="${esc(dt.href)}" target="_blank" rel="noopener">${esc(dt.label)}${dt.found ? `<span>${esc(dt.host)}</span>` : ""} ↗</a>`}</div>
-      <div class="acts"><button type="button" class="heart ${want[s.id] ? "on" : ""}" data-want="${s.id}" aria-label="食べたいリスト" aria-pressed="${!!want[s.id]}">♥</button>${stampHTML(s.id)}</div>`;
+      <div class="acts"><button type="button" class="heart ${isWant(s.id) ? "on" : ""}" data-want="${s.id}" aria-label="食べたいリスト" aria-pressed="${isWant(s.id)}">♥</button>${stampHTML(s.id)}</div>`;
     li.querySelector(".info").onclick = () => select(s.id, true);
     listEl.appendChild(li);
   });
   const ids = new Set(vis.map(s => s.id));
   gPins.querySelectorAll(".pin").forEach(p => { const id = p.dataset.id, s = byId(id);
     p.classList.toggle("dim", !ids.has(id)); p.classList.toggle("active", id === activeId);
-    p.classList.toggle("mine", !!s.mine); p.classList.toggle("eaten", !!ate[id]); });
+    p.classList.toggle("mine", !!s.mine); p.classList.toggle("eaten", isAte(id)); });
   updateBloom();
   if (!document.getElementById("paneBook").hidden) renderBook();
 }
 
 // ---- スタンプ ----
-function stamp(id, btn){
-  if (ate[id]) { select(id, false); return; }
+function stamp(id){
+  if (myTs(id)) { select(id, false); return; }
   const before = Math.floor(ateCount() / PER_FLOWER);
-  ate[id] = today(); store.set("purin.ate", ate); delete want[id]; store.set("purin.want", want);
+  write({ate: {[id]: {[meKey()]: Date.now()}}, want: {[id]: null}});
   const n = ateCount(), after = Math.floor(n / PER_FLOWER);
   refresh(); if (!card.hidden && activeId === id) select(id, false);
   document.querySelectorAll(`[data-stamp="${id}"]`).forEach(b => b.classList.add("just"));
   if (after > before) celebrate(after);
   else toast(`ごちそうさま！ ${byId(id).pudding} にスタンプ（あと${PER_FLOWER - n % PER_FLOWER}店で満開）`);
 }
-function unstamp(id){ delete ate[id]; store.set("purin.ate", ate); refresh(); select(id, false); toast("スタンプを取り消しました"); }
+function unstamp(id){ write({ate: {[id]: {[meKey()]: null}}}); refresh(); select(id, false); toast("スタンプを取り消しました"); }
 document.addEventListener("click", e => {
-  const s = e.target.closest("[data-stamp]"); if (s) { stamp(s.dataset.stamp, s); return; }
+  const s = e.target.closest("[data-stamp]"); if (s) { stamp(s.dataset.stamp); return; }
   const w = e.target.closest("[data-want]");
-  if (w) { const id = w.dataset.want; if (want[id]) delete want[id]; else want[id] = 1; store.set("purin.want", want); refresh(); if (activeId === id && !card.hidden) select(id, false); }
+  if (w) { const id = w.dataset.want; write({want: {[id]: isWant(id) ? null : true}}); refresh(); if (activeId === id && !card.hidden) select(id, false); }
 });
 
 function updateBloom(){
@@ -602,9 +654,9 @@ function updateBloom(){
 // ---- 満開のお祝い／トースト ----
 const cel = document.getElementById("celebrate");
 function celebrate(k){
-  const recent = Object.entries(ate).filter(([id]) => byId(id)).slice(-PER_FLOWER).map(([id]) => byId(id).pudding);
+  const recent = ateOrder().slice(-PER_FLOWER).map(id => byId(id).pudding);
   cel.innerHTML = `<div class="box" role="dialog" aria-modal="true" aria-labelledby="celT">${flowerSVG(5, {spark:true})}
-    <h2 id="celT">プリンの花が満開！</h2><p>${k}輪目の花が咲きました。<br>${recent.map(esc).join("・")}</p>
+    <h2 id="celT">プリンの花が満開！</h2><p>${pair ? "ふたりで" : ""}${k}輪目の花が咲きました。<br>${recent.map(esc).join("・")}</p>
     <button type="button" class="btn primary" id="celOk">つぎの花を育てる</button></div>`;
   cel.hidden = false; const ok = document.getElementById("celOk"); ok.focus();
   ok.onclick = () => { cel.hidden = true; };
@@ -622,11 +674,12 @@ function select(id, fly){
   const q = encodeURIComponent(`${s.shop} ${s.pref}${s.city.replace(/（.*?）/g, "")}`);
   card.innerHTML = `<button class="close" type="button" aria-label="閉じる">×</button>
     <div class="txt"><h3>${esc(s.pudding)}</h3><p class="shop">${esc(s.shop)}</p><p class="where">${esc(s.pref)} ${esc(s.city)}</p></div>
-    <div class="stampcol">${stampHTML(id, true)}${ate[id] ? `<button type="button" class="linkish" data-undo>取り消す</button>` : ""}</div>
+    <div class="stampcol">${stampHTML(id, true)}${myTs(id) ? `<button type="button" class="linkish" data-undo>取り消す</button>` : ""}</div>
+    ${pair && isAte(id) ? `<p class="whoate">${whoAte(id).sort((a, b) => a[1] - b[1]).map(([k, t]) => `${k === uid ? "あなた" : esc(names[k] || "パートナー") + "さん"} ${md(t)}`).join("・")} に食べた</p>` : ""}
     ${s.note ? `<p class="note">${esc(s.note)}</p>` : ""}
     ${s.mine ? "" : (dt => `<a class="detail ${dt.found ? "" : "search"}" href="${esc(dt.href)}" target="_blank" rel="noopener"><b>${dt.found ? "詳細ページ" : "詳細ページは未登録"}</b><span>${esc(dt.label)}${dt.found ? "：" + esc(dt.host) : ""} ↗</span></a>`)(detail(s))}
     <div class="row">
-      <button type="button" class="btn ${want[id] ? "on" : ""}" data-want="${id}">♥ 食べたい</button>
+      <button type="button" class="btn ${isWant(id) ? "on" : ""}" data-want="${id}">♥ 食べたい</button>
       <a class="btn ghost" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">地図アプリで開く ↗</a>
       ${s.mine ? `<button type="button" class="linkish" data-del>この推しプリンを削除</button>` : ""}
     </div>`;
@@ -635,8 +688,7 @@ function select(id, fly){
   const confirmTwice = (btn, label, fn) => btn.onclick = () => { if (btn.classList.contains("armed")) fn(); else { btn.classList.add("armed"); btn.textContent = label; } };
   const u = card.querySelector("[data-undo]"); if (u) confirmTwice(u, "本当に取り消す", () => unstamp(id));
   const d = card.querySelector("[data-del]");
-  if (d) confirmTwice(d, "本当に削除する", () => { mine = mine.filter(x => x.id !== id); delete ate[id]; delete want[id];
-    store.set("purin.mine", mine); store.set("purin.ate", ate); store.set("purin.want", want); card.hidden = true; activeId = null; drawPins(); });
+  if (d) confirmTwice(d, "本当に削除する", () => { write({mine: {[id]: null}, ate: {[id]: null}, want: {[id]: null}}); card.hidden = true; activeId = null; drawPins(); });
   refresh();
   listEl.querySelector("li.active")?.scrollIntoView({block:"nearest"});
 }
@@ -653,16 +705,16 @@ document.getElementById("tabFind").onclick = () => showTab(false);
 document.getElementById("tabBook").onclick = () => showTab(true);
 document.getElementById("bloomBadge").onclick = () => showTab(true);
 function renderBook(){
-  const order = Object.entries(ate).filter(([id]) => byId(id));
+  const order = ateOrder();
   const n = order.length, flowers = Math.floor(n / PER_FLOWER);
   let figs = "";
-  for (let i = 0; i < flowers; i++) figs += `<figure>${flowerSVG(5)}<figcaption>${i + 1}輪目<br>${md(order[i * PER_FLOWER + PER_FLOWER - 1][1])}</figcaption></figure>`;
+  for (let i = 0; i < flowers; i++) figs += `<figure>${flowerSVG(5)}<figcaption>${i + 1}輪目<br>${md(firstTs(order[i * PER_FLOWER + PER_FLOWER - 1]))}</figcaption></figure>`;
   figs += `<figure>${flowerSVG(n % PER_FLOWER)}<figcaption>そだて中<br>${n % PER_FLOWER}/${PER_FLOWER}</figcaption></figure>`;
-  let html = `<section class="garden"><h2>プリンの花だん</h2><p class="fine">${PER_FLOWER}店スタンプを集めるごとに、花が1輪満開になります。</p><div class="flowers">${figs}</div></section>`;
+  let html = `<section class="garden"><h2>${pair ? "ふたりの" : ""}プリンの花だん</h2><p class="fine">${PER_FLOWER}店スタンプを集めるごとに、花が1輪満開になります。</p><div class="flowers">${figs}</div></section>`;
   for (const r of [...Object.keys(REGIONS), "その他"]) {
     const shops = all().filter(s => regionOf(s) === r).sort((a, b) => b.lat - a.lat); if (!shops.length) continue;
-    html += `<h2>${r} <span class="fine">${shops.filter(s => ate[s.id]).length}/${shops.length}</span></h2><div class="slots">` +
-      shops.map(s => `<button type="button" class="slot" data-go="${s.id}" aria-label="${esc(s.shop)} ${ate[s.id] ? "スタンプ済み" : "未スタンプ"}">${stampFace(s.id)}<span><b>${esc(s.pudding.endsWith("各種") ? s.shop : s.pudding)}</b>${esc(s.pref)}</span></button>`).join("") + `</div>`;
+    html += `<h2>${r} <span class="fine">${shops.filter(s => isAte(s.id)).length}/${shops.length}</span></h2><div class="slots">` +
+      shops.map(s => `<button type="button" class="slot" data-go="${s.id}" aria-label="${esc(s.shop)} ${isAte(s.id) ? "スタンプ済み" : "未スタンプ"}">${stampFace(s.id)}<span><b>${esc(s.pudding.endsWith("各種") ? s.shop : s.pudding)}</b>${esc(s.pref)}</span></button>`).join("") + `</div>`;
   }
   paneBook.innerHTML = html;
   paneBook.querySelectorAll("[data-go]").forEach(b => b.onclick = () => select(b.dataset.go, true));
@@ -687,14 +739,161 @@ form.addEventListener("submit", e => {
   const pref = Object.values(REGIONS).flat().find(p => city.startsWith(p)) || "";
   const s = {id: "mine-" + Date.now(), mine: true, pudding: document.getElementById("fPudding").value.trim(), shop: document.getElementById("fShop").value.trim(),
     pref, city: pref ? city.slice(pref.length) : city, lat: picked.lat, lon: picked.lon, tags: ["マイプリン"], note: document.getElementById("fNote").value.trim()};
-  mine.push(s); store.set("purin.mine", mine); dlg.close(); drawPins(); select(s.id, true);
+  write({mine: {[s.id]: s}}); dlg.close(); drawPins(); select(s.id, true);
 });
+
+// ---- ふたりで共有（招待コード） ----
+const pairDlg = document.getElementById("pairDlg"), pairBody = document.getElementById("pairBody");
+const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";   // 読み間違えやすい 0/O・1/I/L は使わない
+const newCode = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), b => CODE_CHARS[b % CODE_CHARS.length]).join("");
+const cleanCode = t => t.toUpperCase().replace(/[^A-Z0-9]/g, "");
+const clone = o => JSON.parse(JSON.stringify(o || {}));
+let unsub = null, pairErr = "", syncNote = "";
+
+function soloAsMine(){                           // ひとりの記録を、自分の名前で共有データに持っていく形にする
+  const solo = store.get("purin.v2", {ate:{}, want:{}, mine:{}}), out = {ate:{}, want:{}, mine:{}};
+  for (const [id, m] of Object.entries(solo.ate || {})) { const t = (m || {})[SOLO]; if (t) out.ate[id] = {[uid]: t}; }
+  for (const [id, v] of Object.entries(solo.want || {})) if (v) out.want[id] = true;
+  for (const [id, v] of Object.entries(solo.mine || {})) if (v) out.mine[id] = v;
+  return out;
+}
+async function saveMyPair(code){
+  store.set("purin.pair", code);
+  try { await db.doc(`data/users/${uid}/profile`).set({pair: code}); } catch {}
+}
+async function createPair(bring){
+  for (let i = 0; i < 5; i++) {
+    const code = newCode(), ref = db.doc("pairs/" + code);
+    if ((await ref.get()).exists) continue;
+    await ref.set({members: {[uid]: Date.now()}, created: Date.now(), ...(bring ? soloAsMine() : {ate:{}, want:{}, mine:{}})});
+    await saveMyPair(code); subscribe(code); return;
+  }
+  throw new Error("code");
+}
+async function joinPair(code, bring){
+  const ref = db.doc("pairs/" + code), snap = await ref.get();
+  if (!snap.exists) { pairErr = "この招待コードは見つかりません。文字をもう一度確かめてください。"; return; }
+  const active = Object.entries(snap.data().members || {}).filter(([, t]) => t).map(([k]) => k);
+  if (!active.includes(uid) && active.length >= 2) { pairErr = "このコードはすでに2人で使われています。"; return; }
+  const patch = {members: {[uid]: Date.now()}};
+  if (bring) merge(patch, soloAsMine());
+  await ref.update(patch);
+  await saveMyPair(code); subscribe(code);
+  toast("つながりました！ これからはふたりのスタンプ帳です");
+}
+async function leavePair(){
+  // 共有中の記録は、自分のブラウザにひとり用の記録として残す
+  const keep = {ate:{}, want: clone(S.want), mine: clone(S.mine)};
+  for (const id of Object.keys(S.ate || {})) if (isAte(id)) keep.ate[id] = {[SOLO]: firstTs(id)};
+  const ref = pair.ref;
+  unsub?.(); unsub = null; pair = null; S = keep; store.set("purin.v2", S);
+  store.set("purin.pair", null);
+  try { await ref.update({members: {[uid]: null}}); } catch {}
+  try { await db.doc(`data/users/${uid}/profile`).set({pair: null}); } catch {}
+  drawPins(); renderPair(); toast("共有をやめました。記録はこの端末に残っています");
+}
+function subscribe(code){
+  unsub?.();
+  pair = {code, ref: db.doc("pairs/" + code), members: {}, ready: false};
+  syncNote = "つないでいます…"; renderPair();
+  const timer = setTimeout(() => { syncNote = "共有データにまだ届きません。通信状態を確認してください。"; renderPair(); }, 10000);
+  unsub = pair.ref.onSnapshot(snap => {
+    if (!snap.metadata.fromCache) { clearTimeout(timer); syncNote = ""; }
+    if (!snap.exists || !(snap.data().members || {})[uid]) {     // コードが消えた、または外れた
+      if (!snap.metadata.fromCache && pair) { unsub?.(); unsub = null; pair = null; S = loadSolo(); store.set("purin.pair", null); drawPins(); renderPair(); }
+      return;
+    }
+    onPairData(snap.data());
+  }, () => { clearTimeout(timer); syncNote = "共有が止まりました。ページを開き直してください。"; renderPair(); });
+}
+function onPairData(d){
+  const prevCount = ateCount(), prevAte = S.ate || {}, wasReady = pair.ready;
+  S = {ate: clone(d.ate), want: clone(d.want), mine: clone(d.mine)};
+  pair.members = {...(d.members || {})}; pair.ready = true;
+  const news = [];
+  if (wasReady) for (const [id, m] of Object.entries(S.ate)) for (const [k, t] of Object.entries(m || {})) if (t && k !== uid && !(prevAte[id] || {})[k]) news.push(id);
+  drawPins(); if (!card.hidden && activeId) select(activeId, false);
+  refreshNames();
+  const n = ateCount();
+  if (news.length && byId(news[0])) {
+    if (Math.floor(n / PER_FLOWER) > Math.floor(prevCount / PER_FLOWER)) celebrate(Math.floor(n / PER_FLOWER));
+    else toast(`${partnerName()}さんが ${byId(news[0]).pudding} にスタンプ！`);
+  }
+}
+async function refreshNames(){
+  if (!user || !pair) return renderPair();
+  const ids = Object.keys(pair.members).filter(k => pair.members[k]);
+  const ps = await user.profiles(ids);
+  names = {}; pair.avatars = {};
+  for (const k of ids) { names[k] = ps[k]?.name || ""; pair.avatars[k] = ps[k]?.avatarUrl || ""; }
+  renderPair(); refresh();
+}
+function renderPair(){
+  const btn = document.getElementById("pairBtn"), txt = document.getElementById("pairTxt");
+  btn.classList.toggle("on", !!(pair && partnerId())); btn.classList.toggle("wait", !!(pair && !partnerId()));
+  txt.textContent = !pair ? "ふたりで共有" : partnerId() ? `${partnerName()}さんと共有中` : "相手の参加待ち";
+  let h = `<h2 id="pairH">ふたりで共有</h2>`;
+  if (!db) {
+    h += `<p class="pairnote">招待コードでの共有は、このプリンマップをClaude上で開いたとき（サインイン中）に使えます。今は、この端末だけに記録しています。</p>`;
+  } else if (pair) {
+    const pid = partnerId();
+    h += `<p class="pairnote">${pid ? "このコードでつながっています。スタンプ・食べたい・推しプリンがふたりで共有されます。" : "このコードを相手に送ってください。相手が「招待コードを入力」に入れると、ふたりのプリンマップになります。"}</p>
+      <div class="code" id="codeTxt">${esc(pair.code)}</div>
+      <div class="row"><button type="button" class="btn" id="copyCode">コードをコピー</button></div>
+      <ul class="members" style="margin-top:10px">${Object.keys(pair.members).filter(k => pair.members[k]).map(k => `<li>${pair.avatars?.[k] ? `<img alt="" src="${esc(pair.avatars[k])}">` : ""}${k === uid ? "あなた" : esc(names[k] || "パートナー")}</li>`).join("")}${pid ? "" : `<li>参加待ち…</li>`}</ul>
+      ${syncNote ? `<p class="err">${esc(syncNote)}</p>` : ""}
+      <div class="pairsec"><p>相手がこのページを開けないときは、ページ右上の「共有」から、相手のメールアドレスを「編集者」として招待してください。</p>
+      <div class="row"><button type="button" class="linkish" id="leaveBtn">共有をやめる</button></div></div>`;
+  } else if (canWrite === false) {
+    h += `<p class="pairnote">共有するには、このページの持ち主に「編集者」として招待してもらう必要があります。今は見るだけのモードです。</p>`;
+  } else {
+    h += `<p class="pairnote">招待コードを使うと、ふたりで同じスタンプ帳とプリンの花を育てられます。</p>
+      <div class="pairsec"><h3>招待する</h3><p>コードを作って、相手に送ります。</p>
+        <label class="check"><input type="checkbox" id="bringA" checked> 今のスタンプを持っていく</label>
+        <div class="row"><button type="button" class="btn primary" id="createBtn">招待コードを作る</button></div></div>
+      <div class="pairsec"><h3>招待コードを入力</h3><p>相手から届いた6文字のコードを入れます。</p>
+        <input class="codein" id="codeIn" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABC123" aria-label="招待コード">
+        <label class="check"><input type="checkbox" id="bringB" checked> 今のスタンプも合流させる</label>
+        <div class="row"><button type="button" class="btn primary" id="joinBtn">つなぐ</button></div></div>
+      ${pairErr ? `<p class="err">${esc(pairErr)}</p>` : ""}`;
+  }
+  h += `<div class="row" style="margin-top:14px;justify-content:flex-end"><button type="button" class="btn ghost" id="pairClose">閉じる</button></div>`;
+  pairBody.innerHTML = h;
+  document.getElementById("pairClose").onclick = () => pairDlg.close();
+  const busy = async (b, fn) => { b.disabled = true; pairErr = ""; try { await fn(); } catch { pairErr = "うまくいきませんでした。通信状態を確認して、もう一度お試しください。"; } renderPair(); };
+  const cb = document.getElementById("createBtn"); if (cb) cb.onclick = () => busy(cb, () => createPair(document.getElementById("bringA").checked));
+  const jb = document.getElementById("joinBtn");
+  if (jb) jb.onclick = () => { const code = cleanCode(document.getElementById("codeIn").value);
+    if (code.length !== 6) { pairErr = "招待コードは6文字です。"; renderPair(); return; }
+    busy(jb, () => joinPair(code, document.getElementById("bringB").checked)); };
+  const cp = document.getElementById("copyCode");
+  if (cp) cp.onclick = () => navigator.clipboard.writeText(pair.code).then(() => { cp.textContent = "コピーしました"; },
+    () => { const r = document.createRange(); r.selectNodeContents(document.getElementById("codeTxt")); getSelection().removeAllRanges(); getSelection().addRange(r); cp.textContent = "選択しました。コピーしてください"; });
+  const lb = document.getElementById("leaveBtn");
+  if (lb) lb.onclick = () => { if (lb.classList.contains("armed")) leavePair(); else { lb.classList.add("armed"); lb.textContent = "本当にやめる（記録はこの端末に残ります）"; } };
+}
+document.getElementById("pairBtn").onclick = () => { pairErr = ""; renderPair(); pairDlg.showModal(); };
+
+async function initShare(){
+  if (!window.claude?.use) return;                // GitHub Pages などでは、ひとりモードのまま
+  const [d, u] = await Promise.all([claude.use("db"), claude.use("user")]);
+  user = u;
+  if (!d || !u) return;
+  const id = await u.id(); if (!id) return;
+  db = d; uid = id; canWrite = await u.can("data.write");
+  let code = null;
+  try { const p = await db.doc(`data/users/${uid}/profile`).get(); code = p.exists ? p.data().pair : null; } catch {}
+  code = code || store.get("purin.pair", null);
+  if (code) subscribe(code); else renderPair();
+}
 
 // ---- 起動 ----
 document.getElementById("q").addEventListener("input", e => { filters.q = e.target.value; refresh(); });
 chips("regionChips", ["全国", ...Object.keys(REGIONS)], "region");
 chips("tagChips", ["すべて", "まだ食べてない", "♥ 食べたい", "ご当地プリン", "温泉地", "専門店", "喫茶・カフェ", "洋菓子店", "老舗", "道の駅・市場", "マイプリン"], "tag");
 drawPins();
+renderPair();
+initShare();
 </script>
 </body>
 </html>
